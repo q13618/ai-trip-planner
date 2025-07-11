@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive United Card Benefits Explorer with AI Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Harmony (Slate/Blue) -->
+    <!-- Application Structure Plan: The application is designed as an interactive "Benefit Dashboard". This structure was chosen over a simple text layout for superior usability. It allows the user to see a high-level summary immediately (via a summary chart and clear icons) and then "drill down" into the details for each specific benefit by clicking on a card. This card-based, interactive approach directly answers the user's primary questions ("Does my card fix this problem?") in a scannable, engaging, and non-overwhelming way. A final, static checklist reinforces the most critical actions the user must take. A new AI Trip Assistant section has been added to provide generative trip planning capabilities, extending the app's utility. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Overall benefit status (2 work, 1 doesn't, 1 is nuanced). -> Goal: Provide a quick visual summary. -> Viz/Method: Donut Chart. -> Interaction: Static display. -> Justification: Summarizes the key outcomes of the entire report instantly. -> Library: Chart.js/Canvas.
+        - Report Info: Individual benefit policies (Carry-on, Checked Bag, etc.). -> Goal: Inform clearly on each specific perk. -> Viz/Method: Card layout with icons (✅/❌/ℹ️) and text. -> Interaction: Click to expand/collapse card revealing details. -> Justification: Breaks down complex policies into manageable, interactive chunks. -> Library/Method: HTML/Tailwind/JS.
+        - Report Info: Required user actions. -> Goal: Ensure user completes necessary steps. -> Viz/Method: Static checklist. -> Interaction: None. -> Justification: Highlights the most critical, actionable information for the user. -> Library/Method: HTML/Tailwind.
+        - Report Info: Trip planning needs (packing, activities, communication). -> Goal: Generate personalized trip suggestions. -> Viz/Method: Secure Netlify Function call to Gemini API with structured JSON output. -> Interaction: User inputs interests, clicks button to trigger function call. -> Justification: Provides significant added value by offering AI-powered, actionable travel planning assistance while keeping the API key secure. -> Library/Method: Vanilla JS Fetch API for Netlify Function.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .benefit-card-content, .ai-results-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .benefit-card.is-open .benefit-card-content, .ai-results.is-visible .ai-results-content {
+            max-height: 2000px; /* Adjust as needed */
+        }
+        .benefit-card.is-open .chevron {
+            transform: rotate(180deg);
+        }
+        .chevron {
+            transition: transform 0.3s ease-in-out;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 250px;
+            height: auto;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .ai-tab.active {
+            border-color: #3b82f6;
+            color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        .ai-tab-panel {
+            display: none;
+        }
+        .ai-tab-panel.active {
+            display: block;
+        }
+        .loader {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+
+        <header class="text-center mb-12">
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-900">United Basic Economy & Card Perks</h1>
+            <p class="mt-3 text-lg text-slate-600 max-w-3xl mx-auto">An interactive guide to see how your United℠ Business Card benefits stack up against Basic Economy limitations.</p>
+        </header>
+
+        <main>
+            <section id="summary" class="mb-12">
+                <div class="bg-white rounded-xl shadow-lg p-6 max-w-4xl mx-auto">
+                    <h2 class="text-xl font-bold text-center text-slate-900 mb-4">Your Benefit Summary</h2>
+                    <div class="flex flex-col md:flex-row items-center justify-center gap-8">
+                        <div class="chart-container">
+                            <canvas id="benefitsSummaryChart"></canvas>
+                        </div>
+                        <div class="text-slate-700 space-y-3">
+                            <p class="text-center md:text-left">Traveling with a Basic Economy ticket can be confusing. This dashboard clarifies which restrictions are overridden by your cardholder perks.</p>
+                             <ul class="space-y-2">
+                                <li class="flex items-center">
+                                    <span class="h-4 w-4 rounded-full bg-blue-500 mr-3"></span>
+                                    <span><span class="font-bold">2 Benefits Apply:</span> Your card overrides the baggage restrictions.</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <span class="h-4 w-4 rounded-full bg-red-500 mr-3"></span>
+                                    <span><span class="font-bold">1 Restriction Applies:</span> Your card does not provide free seat selection.</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <span class="h-4 w-4 rounded-full bg-slate-400 mr-3"></span>
+                                    <span><span class="font-bold">1 Standard Policy:</span> The 24-hour cancellation rule applies to all tickets.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="benefits-grid" class="mb-16">
+                <h2 class="text-2xl font-bold text-center text-slate-900 mb-8">Explore Your Benefits</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+                    <div class="benefit-card bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer" data-benefit="carry-on">
+                        <div class="p-6 flex justify-between items-center">
+                            <div><span class="text-5xl">🎒</span><h3 class="text-xl font-semibold mt-2 text-slate-900">Full-Sized Carry-On</h3></div>
+                            <div class="text-right"><span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">✅ Benefit Applies</span><span class="chevron mt-4 block text-slate-400"><svg class="w-6 h-6 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></span></div>
+                        </div>
+                        <div class="benefit-card-content"><div class="px-6 pb-6 pt-2 border-t border-slate-200"><p class="font-semibold text-slate-700 mb-2">Policy:</p><p class="text-slate-600 mb-4">Yes, your card benefit overrides the Basic Economy carry-on restriction. As the primary cardmember, both you and one companion on the same reservation can bring one full-sized carry-on bag plus one personal item on board.</p><p class="font-semibold text-slate-700 mb-2">Action Required:</p><p class="text-slate-600">None. This benefit is automatically applied as long as your MileagePlus number is in the reservation.</p></div></div>
+                    </div>
+                    <div class="benefit-card bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer" data-benefit="checked-bag">
+                        <div class="p-6 flex justify-between items-center">
+                            <div><span class="text-5xl">🧳</span><h3 class="text-xl font-semibold mt-2 text-slate-900">First Checked Bag Free</h3></div>
+                            <div class="text-right"><span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">✅ Benefit Applies</span><span class="chevron mt-4 block text-slate-400"><svg class="w-6 h-6 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></span></div>
+                        </div>
+                        <div class="benefit-card-content"><div class="px-6 pb-6 pt-2 border-t border-slate-200"><p class="font-semibold text-slate-700 mb-2">Policy:</p><p class="text-slate-600 mb-4">Yes, this is a major saving. The primary cardmember and one companion on the same reservation each get their first standard checked bag free.</p><p class="font-semibold text-slate-700 mb-2">Conditions (Important):</p><ul class="list-disc list-inside text-slate-600 space-y-1"><li>You must have purchased the tickets with your United℠ Business Card.</li><li>Your MileagePlus number must be linked to your reservation.</li></ul></div></div>
+                    </div>
+                    <div class="benefit-card bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer" data-benefit="seat-selection">
+                        <div class="p-6 flex justify-between items-center">
+                            <div><span class="text-5xl">💺</span><h3 class="text-xl font-semibold mt-2 text-slate-900">Advance Seat Selection</h3></div>
+                            <div class="text-right"><span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">❌ Restriction Applies</span><span class="chevron mt-4 block text-slate-400"><svg class="w-6 h-6 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></span></div>
+                        </div>
+                         <div class="benefit-card-content"><div class="px-6 pb-6 pt-2 border-t border-slate-200"><p class="font-semibold text-slate-700 mb-2">Policy:</p><p class="text-slate-600 mb-4">No, your credit card does not override the Basic Economy seat selection policy. Your seats will be automatically assigned to you before boarding, and you may not be seated together.</p><p class="font-semibold text-slate-700 mb-2">Option:</p><p class="text-slate-600">You may be offered the option to pay an additional fee to select specific seats.</p></div></div>
+                    </div>
+                    <div class="benefit-card bg-white rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer" data-benefit="cancellation">
+                        <div class="p-6 flex justify-between items-center">
+                            <div><span class="text-5xl">⏱️</span><h3 class="text-xl font-semibold mt-2 text-slate-900">24-Hour Cancellation</h3></div>
+                            <div class="text-right"><span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-200 text-slate-800">ℹ️ Standard Policy</span><span class="chevron mt-4 block text-slate-400"><svg class="w-6 h-6 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></span></div>
+                        </div>
+                         <div class="benefit-card-content"><div class="px-6 pb-6 pt-2 border-t border-slate-200"><p class="font-semibold text-slate-700 mb-2">Policy:</p><p class="text-slate-600 mb-4">This isn't a special card benefit, but a standard rule. You can cancel any reservation for a full refund within 24 hours of booking.</p><p class="font-semibold text-slate-700 mb-2">Limitation:</p><p class="text-slate-600">The ticket must be booked at least one week prior to departure. After 24 hours, Basic Economy tickets are non-refundable.</p></div></div>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="ai-assistant" class="mb-16">
+                <div class="max-w-5xl mx-auto bg-white rounded-xl shadow-lg p-6 lg:p-8">
+                    <div class="text-center">
+                        <h2 class="text-2xl font-bold text-slate-900">✨ AI-Powered Trip Assistant</h2>
+                        <p class="mt-2 text-slate-600 max-w-2xl mx-auto">Get personalized suggestions for your trip. Enter your interests and let our AI assistant help you plan!</p>
+                    </div>
+                    <div class="mt-6 max-w-xl mx-auto">
+                        <div class="grid grid-cols-1 gap-4">
+                            <div>
+                                <label for="ai-destination" class="block text-sm font-medium text-slate-700">Destination</label>
+                                <input type="text" id="ai-destination" value="Houston" class="mt-1 block w-full px-3 py-2 bg-slate-100 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label for="ai-interests" class="block text-sm font-medium text-slate-700">Your Interests</label>
+                                <input type="text" id="ai-interests" placeholder="e.g., museums, live music, BBQ, space exploration" class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <button id="generate-ai-suggestions" class="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-300 flex items-center justify-center">
+                                Generate Suggestions
+                            </button>
+                        </div>
+                    </div>
+                    <div id="ai-results-container" class="ai-results mt-8">
+                        <div class="ai-results-content">
+                            <div class="border-b border-slate-200">
+                                <nav class="-mb-px flex space-x-6" aria-label="Tabs">
+                                    <button class="ai-tab active" data-tab="packing">Packing List</button>
+                                    <button class="ai-tab" data-tab="activities">Activities</button>
+                                    <button class="ai-tab" data-tab="email">Draft Email</button>
+                                </nav>
+                            </div>
+                            <div class="mt-6">
+                                <div id="packing-panel" class="ai-tab-panel active"></div>
+                                <div id="activities-panel" class="ai-tab-panel"></div>
+                                <div id="email-panel" class="ai-tab-panel"></div>
+                            </div>
+                        </div>
+                        <div id="ai-loader" class="hidden justify-center items-center py-8">
+                            <div class="loader"></div>
+                        </div>
+                        <div id="ai-error" class="hidden text-center py-8 text-red-600"></div>
+                    </div>
+                </div>
+            </section>
+
+             <section id="key-actions" class="mt-16">
+                 <div class="max-w-3xl mx-auto bg-blue-50 border-l-4 border-blue-500 rounded-r-lg p-6">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-4">Your Pre-Flight Checklist</h2>
+                    <p class="text-slate-700 mb-4">To ensure you receive all your eligible benefits, please confirm these three things:</p>
+                    <ul class="space-y-3">
+                        <li class="flex items-start"><span class="text-blue-600 font-bold text-xl mr-3">1.</span><div><h4 class="font-semibold">Confirm Same Reservation</h4><p class="text-slate-600">Both you and your daughter must be booked on the same United reservation.</p></div></li>
+                        <li class="flex items-start"><span class="text-blue-600 font-bold text-xl mr-3">2.</span><div><h4 class="font-semibold">Add Your MileagePlus Number</h4><p class="text-slate-600">Log in to "My Trips" and ensure your MileagePlus account number is attached.</p></div></li>
+                        <li class="flex items-start"><span class="text-blue-600 font-bold text-xl mr-3">3.</span><div><h4 class="font-semibold">Confirm Ticket Purchase</h4><p class="text-slate-600">The free checked bag benefit requires that the tickets were purchased with your United℠ Business Card.</p></div></li>
+                    </ul>
+                 </div>
+            </section>
+        </main>
+
+        <footer class="text-center mt-16 text-slate-500 text-sm">
+            <p>This is an informational guide. AI-generated content may be inaccurate. Always verify important information.</p>
+        </footer>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const benefitCards = document.querySelectorAll('.benefit-card');
+            benefitCards.forEach(card => {
+                card.addEventListener('click', () => card.classList.toggle('is-open'));
+            });
+
+            new Chart(document.getElementById('benefitsSummaryChart').getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Benefit Applies', 'Restriction Applies', 'Standard Policy'],
+                    datasets: [{
+                        data: [2, 1, 1],
+                        backgroundColor: ['#3b82f6', '#ef4444', '#94a3b8'],
+                        borderColor: '#f8fafc',
+                        borderWidth: 4,
+                        hoverBorderColor: '#f8fafc'
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, cutout: '70%',
+                    plugins: { legend: { display: false }, tooltip: { enabled: true, backgroundColor: '#1e293b', titleFont: { weight: 'bold' }, bodyFont: { size: 12 }, padding: 10, cornerRadius: 6 }}
+                }
+            });
+
+            const generateBtn = document.getElementById('generate-ai-suggestions');
+            const resultsContainer = document.getElementById('ai-results-container');
+            const loader = document.getElementById('ai-loader');
+            const errorEl = document.getElementById('ai-error');
+            
+            const tabs = document.querySelectorAll('.ai-tab');
+            const tabPanels = document.querySelectorAll('.ai-tab-panel');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    const targetPanel = document.getElementById(`${tab.dataset.tab}-panel`);
+                    tabPanels.forEach(p => p.classList.remove('active'));
+                    targetPanel.classList.add('active');
+                });
+            });
+
+            generateBtn.addEventListener('click', async () => {
+                const destination = document.getElementById('ai-destination').value;
+                const interests = document.getElementById('ai-interests').value;
+
+                if (!interests) {
+                    alert('Please enter your interests to get personalized suggestions.');
+                    return;
+                }
+
+                loader.style.display = 'flex';
+                errorEl.style.display = 'none';
+                resultsContainer.classList.remove('is-visible');
+
+                try {
+                    const functionUrl = '/.netlify/functions/generate-suggestions';
+                    const response = await fetch(functionUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ destination, interests }) 
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({ message: 'Function call failed with no JSON body' }));
+                        throw new Error(errorData.message || 'Function call failed');
+                    }
+                    
+                    const result = await response.json();
+
+                    if (result.candidates && result.candidates.length > 0) {
+                        const content = JSON.parse(result.candidates[0].content.parts[0].text);
+                        displayAIResults(content);
+                    } else {
+                        throw new Error("No content received from AI.");
+                    }
+
+                } catch (e) {
+                    console.error(e);
+                    errorEl.textContent = 'Sorry, we were unable to get suggestions. Please try again later.';
+                    errorEl.style.display = 'block';
+                } finally {
+                    loader.style.display = 'none';
+                }
+            });
+
+            function displayAIResults(data) {
+                const { packingList, activities, emailDraft } = data;
+                
+                const packingPanel = document.getElementById('packing-panel');
+                packingPanel.innerHTML = packingList.map(category => `
+                    <div class="mb-4">
+                        <h4 class="font-semibold text-lg text-slate-800 mb-2">${category.category}</h4>
+                        <ul class="list-disc list-inside text-slate-600 space-y-1">
+                            ${category.items.map(item => `<li>${item}</li>`).join('')}
+                        </ul>
+                    </div>
+                `).join('');
+
+                const activitiesPanel = document.getElementById('activities-panel');
+                activitiesPanel.innerHTML = activities.map(activity => `
+                    <div class="mb-4 pb-4 border-b border-slate-200 last:border-b-0">
+                        <h4 class="font-semibold text-lg text-slate-800">${activity.name} <span class="text-sm font-medium bg-blue-100 text-blue-800 py-0.5 px-2 rounded-full">${activity.type}</span></h4>
+                        <p class="text-slate-600 mt-1">${activity.description}</p>
+                    </div>
+                `).join('');
+
+                const emailPanel = document.getElementById('email-panel');
+                emailPanel.innerHTML = `
+                    <div class="bg-slate-100 rounded-lg p-4">
+                        <p class="font-semibold text-slate-800">Subject: ${emailDraft.subject}</p>
+                        <hr class="my-2 border-slate-300">
+                        <p class="text-slate-700 whitespace-pre-wrap">${emailDraft.body}</p>
+                    </div>
+                `;
+                
+                resultsContainer.classList.add('is-visible');
+            }
+        });
+    </script>
+</body>
+</html>
