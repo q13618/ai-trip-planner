@@ -10,8 +10,18 @@ exports.handler = async (event) => {
     const { destination, interests } = JSON.parse(event.body);
     const apiKey = process.env.GEMINI_API_KEY; // Securely access the API key
 
+    console.log('Function called with:', { destination, interests });
+    console.log('API Key exists:', !!apiKey);
+
     if (!apiKey) {
-        throw new Error("API key is not configured.");
+        console.error('API key is not configured');
+        return { 
+          statusCode: 500, 
+          body: JSON.stringify({ 
+            message: "API key is not configured. Please set GEMINI_API_KEY environment variable in Netlify.",
+            error: "MISSING_API_KEY"
+          }) 
+        };
     }
     
     const prompt = `You are a helpful travel assistant. A user is traveling to ${destination} on August 13th with their 18-year-old daughter. Their flight is UA2384. Their interests are: ${interests}. Provide a travel plan in JSON format. The JSON object should contain three keys: "packingList", "activities", and "emailDraft".
@@ -36,25 +46,49 @@ exports.handler = async (event) => {
 
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
+    console.log('Calling Gemini API...');
     const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     });
 
+    console.log('API Response status:', response.status);
+
     if (!response.ok) {
         const errorBody = await response.text();
-        return { statusCode: response.status, body: JSON.stringify({ message: `API Error: ${response.statusText}`, details: errorBody }) };
+        console.error('API Error:', response.status, errorBody);
+        return { 
+          statusCode: response.status, 
+          body: JSON.stringify({ 
+            message: `API Error: ${response.statusText}`, 
+            details: errorBody,
+            error: "API_CALL_FAILED"
+          }) 
+        };
     }
     
     const result = await response.json();
+    console.log('API Response received successfully');
 
     return {
       statusCode: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      },
       body: JSON.stringify(result)
     };
 
   } catch (error) {
-    return { statusCode: 500, body: JSON.stringify({ message: error.message }) };
+    console.error('Function error:', error);
+    return { 
+      statusCode: 500, 
+      body: JSON.stringify({ 
+        message: error.message,
+        error: "FUNCTION_ERROR"
+      }) 
+    };
   }
 };

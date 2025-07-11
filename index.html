@@ -260,18 +260,29 @@
 
                 try {
                     const functionUrl = '/.netlify/functions/generate-suggestions';
+                    console.log('Calling function:', functionUrl);
                     const response = await fetch(functionUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ destination, interests }) 
                     });
 
+                    console.log('Response status:', response.status);
+                    const responseText = await response.text();
+                    console.log('Response body:', responseText);
+
                     if (!response.ok) {
-                        const errorData = await response.json().catch(() => ({ message: 'Function call failed with no JSON body' }));
-                        throw new Error(errorData.message || 'Function call failed');
+                        let errorData;
+                        try {
+                            errorData = JSON.parse(responseText);
+                        } catch {
+                            errorData = { message: 'Function call failed with no JSON body' };
+                        }
+                        throw new Error(errorData.message || `Function call failed with status ${response.status}`);
                     }
                     
-                    const result = await response.json();
+                    const result = JSON.parse(responseText);
+                    console.log('Parsed result:', result);
 
                     if (result.candidates && result.candidates.length > 0) {
                         const content = JSON.parse(result.candidates[0].content.parts[0].text);
@@ -281,8 +292,8 @@
                     }
 
                 } catch (e) {
-                    console.error(e);
-                    errorEl.textContent = 'Sorry, we were unable to get suggestions. Please try again later.';
+                    console.error('Error details:', e);
+                    errorEl.textContent = `Error: ${e.message}. Please check the console for more details.`;
                     errorEl.style.display = 'block';
                 } finally {
                     loader.style.display = 'none';
