@@ -24,10 +24,45 @@ exports.handler = async (event) => {
         };
     }
     
-    const prompt = `You are a helpful travel assistant. A user is traveling to ${destination} on August 13th with their 18-year-old daughter. Their flight is UA2384. Their interests are: ${interests}. Provide a travel plan in JSON format. The JSON object should contain three keys: "packingList", "activities", and "emailDraft".
-    - The "packingList" should be an array of objects, where each object has a "category" (e.g., "Clothing", "Essentials") and an array of "items".
-    - The "activities" should be an array of objects, each with a "name", a "description", and a "type" (e.g., "Museum", "Food", "Music"). Suggest 3-4 varied activities based on their interests.
-    - The "emailDraft" should be an object with a "subject" and a "body". The body should be a friendly email from the user to their daughter summarizing the flight details (Flight UA2384 to Houston, Aug 13) and mentioning the key perks they'll get (free carry-on and checked bags).`;
+    const prompt = `You are a helpful travel assistant. A user is traveling to ${destination} on August 13th with their 18-year-old daughter. Their flight is UA2384. Their interests are: ${interests}. 
+
+IMPORTANT: You MUST return a complete JSON object with EXACTLY three keys: "packingList", "activities", and "emailDraft". Do not omit any of these keys.
+
+The JSON object structure must be:
+{
+  "packingList": [
+    {
+      "category": "Clothing",
+      "items": ["item1", "item2", "item3"]
+    },
+    {
+      "category": "Essentials", 
+      "items": ["item1", "item2", "item3"]
+    }
+  ],
+  "activities": [
+    {
+      "name": "Activity Name",
+      "description": "Detailed description of the activity",
+      "type": "Museum/Food/Music/Outdoor/etc"
+    },
+    {
+      "name": "Activity Name 2",
+      "description": "Detailed description of the activity",
+      "type": "Museum/Food/Music/Outdoor/etc"
+    }
+  ],
+  "emailDraft": {
+    "subject": "Email subject line",
+    "body": "Complete email body text"
+  }
+}
+
+Requirements:
+- packingList: Array of objects with "category" and "items" (array of strings)
+- activities: Array of 3-4 objects with "name", "description", and "type" fields
+- emailDraft: Object with "subject" and "body" fields
+- The email should mention flight UA2384 to ${destination} on August 13th and the free carry-on/checked bag perks`;
 
     const payload = {
       contents: [{ role: "user", parts: [{ text: prompt }] }],
