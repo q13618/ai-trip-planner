@@ -301,32 +301,66 @@
             });
 
             function displayAIResults(data) {
+                console.log('Displaying AI results:', data);
+                
+                // 验证数据结构
+                if (!data || typeof data !== 'object') {
+                    throw new Error('Invalid data structure received from AI');
+                }
+                
                 const { packingList, activities, emailDraft } = data;
                 
+                // 验证packingList
+                if (!packingList || !Array.isArray(packingList)) {
+                    throw new Error('Packing list data is missing or invalid');
+                }
+                
+                // 验证activities
+                if (!activities || !Array.isArray(activities)) {
+                    throw new Error('Activities data is missing or invalid');
+                }
+                
+                // 验证emailDraft
+                if (!emailDraft || typeof emailDraft !== 'object') {
+                    throw new Error('Email draft data is missing or invalid');
+                }
+                
                 const packingPanel = document.getElementById('packing-panel');
-                packingPanel.innerHTML = packingList.map(category => `
-                    <div class="mb-4">
-                        <h4 class="font-semibold text-lg text-slate-800 mb-2">${category.category}</h4>
-                        <ul class="list-disc list-inside text-slate-600 space-y-1">
-                            ${category.items.map(item => `<li>${item}</li>`).join('')}
-                        </ul>
-                    </div>
-                `).join('');
+                packingPanel.innerHTML = packingList.map(category => {
+                    if (!category || !category.category || !Array.isArray(category.items)) {
+                        console.warn('Invalid category data:', category);
+                        return '';
+                    }
+                    return `
+                        <div class="mb-4">
+                            <h4 class="font-semibold text-lg text-slate-800 mb-2">${category.category}</h4>
+                            <ul class="list-disc list-inside text-slate-600 space-y-1">
+                                ${category.items.map(item => `<li>${item}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }).join('');
 
                 const activitiesPanel = document.getElementById('activities-panel');
-                activitiesPanel.innerHTML = activities.map(activity => `
-                    <div class="mb-4 pb-4 border-b border-slate-200 last:border-b-0">
-                        <h4 class="font-semibold text-lg text-slate-800">${activity.name} <span class="text-sm font-medium bg-blue-100 text-blue-800 py-0.5 px-2 rounded-full">${activity.type}</span></h4>
-                        <p class="text-slate-600 mt-1">${activity.description}</p>
-                    </div>
-                `).join('');
+                activitiesPanel.innerHTML = activities.map(activity => {
+                    if (!activity || !activity.name || !activity.description || !activity.type) {
+                        console.warn('Invalid activity data:', activity);
+                        return '';
+                    }
+                    return `
+                        <div class="mb-4 pb-4 border-b border-slate-200 last:border-b-0">
+                            <h4 class="font-semibold text-lg text-slate-800">${activity.name} <span class="text-sm font-medium bg-blue-100 text-blue-800 py-0.5 px-2 rounded-full">${activity.type}</span></h4>
+                            <p class="text-slate-600 mt-1">${activity.description}</p>
+                        </div>
+                    `;
+                }).join('');
 
                 const emailPanel = document.getElementById('email-panel');
                 emailPanel.innerHTML = `
                     <div class="bg-slate-100 rounded-lg p-4">
-                        <p class="font-semibold text-slate-800">Subject: ${emailDraft.subject}</p>
+                        <p class="font-semibold text-slate-800">Subject: ${emailDraft.subject || 'Trip Details'}</p>
                         <hr class="my-2 border-slate-300">
-                        <p class="text-slate-700 whitespace-pre-wrap">${emailDraft.body}</p>
+                        <p class="text-slate-700 whitespace-pre-wrap">${emailDraft.body || 'Email content not available'}</p>
                     </div>
                 `;
                 
