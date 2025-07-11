@@ -26,43 +26,49 @@ exports.handler = async (event) => {
     
     const prompt = `You are a helpful travel assistant. A user is traveling to ${destination} on August 13th with their 18-year-old daughter. Their flight is UA2384. Their interests are: ${interests}. 
 
-IMPORTANT: You MUST return a complete JSON object with EXACTLY three keys: "packingList", "activities", and "emailDraft". Do not omit any of these keys.
+CRITICAL: You MUST return a COMPLETE and VALID JSON object. The response must include ALL THREE sections: packingList, activities, AND emailDraft. Do not stop halfway through the JSON.
 
-The JSON object structure must be:
+Return ONLY a valid JSON object with this exact structure:
+
 {
   "packingList": [
     {
       "category": "Clothing",
-      "items": ["item1", "item2", "item3"]
+      "items": ["Lightweight shirts", "Comfortable pants", "Walking shoes", "Sweater"]
     },
     {
-      "category": "Essentials", 
-      "items": ["item1", "item2", "item3"]
+      "category": "Essentials",
+      "items": ["Toothbrush", "Toothpaste", "Sunscreen", "Phone charger"]
+    },
+    {
+      "category": "Documents",
+      "items": ["Flight tickets", "ID", "Hotel reservation"]
     }
   ],
   "activities": [
     {
-      "name": "Activity Name",
-      "description": "Detailed description of the activity",
-      "type": "Museum/Food/Music/Outdoor/etc"
+      "name": "Visit Space Center Houston",
+      "description": "Explore NASA's official visitor center with interactive exhibits and space artifacts",
+      "type": "Museum"
     },
     {
-      "name": "Activity Name 2",
-      "description": "Detailed description of the activity",
-      "type": "Museum/Food/Music/Outdoor/etc"
+      "name": "Try Local BBQ",
+      "description": "Sample authentic Texas BBQ at popular local restaurants",
+      "type": "Food"
+    },
+    {
+      "name": "Museum District Tour",
+      "description": "Visit multiple museums in Houston's cultural district",
+      "type": "Culture"
     }
   ],
   "emailDraft": {
-    "subject": "Email subject line",
-    "body": "Complete email body text"
+    "subject": "Our Trip to ${destination} - Flight Details and Perks",
+    "body": "Hi honey! Just wanted to share the details for our trip to ${destination} on August 13th. We're flying United Airlines flight UA2384. The great news is that with our United Business Card, we get free carry-on bags and our first checked bag is free too! This will save us money and make traveling easier. I'm excited for our adventure together!"
   }
 }
 
-Requirements:
-- packingList: Array of objects with "category" and "items" (array of strings)
-- activities: Array of 3-4 objects with "name", "description", and "type" fields
-- emailDraft: Object with "subject" and "body" fields
-- The email should mention flight UA2384 to ${destination} on August 13th and the free carry-on/checked bag perks`;
+Remember: Include ALL THREE sections (packingList, activities, emailDraft) in your response. Do not omit any section.`;
 
     const payload = {
       contents: [{ role: "user", parts: [{ text: prompt }] }],
