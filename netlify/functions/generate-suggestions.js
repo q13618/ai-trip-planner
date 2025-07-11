@@ -24,51 +24,32 @@ exports.handler = async (event) => {
         };
     }
     
-    const prompt = `You are a helpful travel assistant. A user is traveling to ${destination} on August 13th with their 18-year-old daughter. Their flight is UA2384. Their interests are: ${interests}. 
+    const prompt = `You are a JSON generation bot. Your only purpose is to create a valid JSON object based on user requirements. Do not add any extra text or explanations.
 
-CRITICAL: You MUST return a COMPLETE and VALID JSON object. The response must include ALL THREE sections: packingList, activities, AND emailDraft. Do not stop halfway through the JSON.
+User Requirements:
+- Destination: ${destination}
+- Interests: ${interests}
+- Flight: UA2384 on August 13th
+- Traveling with: 18-year-old daughter
 
-Return ONLY a valid JSON object with this exact structure:
+JSON Output Specification:
+You MUST generate a single, complete, and valid JSON object. This object MUST contain three top-level keys: "packingList", "activities", and "emailDraft".
 
-{
-  "packingList": [
-    {
-      "category": "Clothing",
-      "items": ["Lightweight shirts", "Comfortable pants", "Walking shoes", "Sweater"]
-    },
-    {
-      "category": "Essentials",
-      "items": ["Toothbrush", "Toothpaste", "Sunscreen", "Phone charger"]
-    },
-    {
-      "category": "Documents",
-      "items": ["Flight tickets", "ID", "Hotel reservation"]
-    }
-  ],
-  "activities": [
-    {
-      "name": "Visit Space Center Houston",
-      "description": "Explore NASA's official visitor center with interactive exhibits and space artifacts",
-      "type": "Museum"
-    },
-    {
-      "name": "Try Local BBQ",
-      "description": "Sample authentic Texas BBQ at popular local restaurants",
-      "type": "Food"
-    },
-    {
-      "name": "Museum District Tour",
-      "description": "Visit multiple museums in Houston's cultural district",
-      "type": "Culture"
-    }
-  ],
-  "emailDraft": {
-    "subject": "Our Trip to ${destination} - Flight Details and Perks",
-    "body": "Hi honey! Just wanted to share the details for our trip to ${destination} on August 13th. We're flying United Airlines flight UA2384. The great news is that with our United Business Card, we get free carry-on bags and our first checked bag is free too! This will save us money and make traveling easier. I'm excited for our adventure together!"
-  }
-}
+1.  **packingList**: An array of objects. Each object must have:
+    - \`category\` (string): e.g., "Clothing", "Essentials".
+    - \`items\` (array of strings): e.g., ["Shirts", "Sunscreen"].
 
-Remember: Include ALL THREE sections (packingList, activities, emailDraft) in your response. Do not omit any section.`;
+2.  **activities**: An array of 3-4 objects. Each object must have:
+    - \`name\` (string): The name of the activity.
+    - \`description\` (string): A short description.
+    - \`type\` (string): e.g., "Food", "Museum", "Outdoor".
+
+3.  **emailDraft**: A single object. It must have:
+    - \`subject\` (string): A subject for an email to the daughter.
+    - \`body\` (string): The email body. The body must mention the flight number (UA2384), destination, date (August 13th), and the free carry-on/checked bag perks.
+
+CRITICAL: The entire response must be a single JSON object. Do not truncate the output. Ensure all brackets and braces are correctly closed. Generate the full JSON for all three keys.
+`;
 
     const payload = {
       contents: [{ role: "user", parts: [{ text: prompt }] }],
