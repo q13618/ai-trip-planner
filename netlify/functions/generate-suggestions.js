@@ -66,9 +66,10 @@ CRITICAL: The entire response must be a single JSON object. Do not truncate the 
       }
     };
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    const model = 'gemini-1.5-flash-latest';
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-    console.log('Calling Gemini API...');
+    console.log(`Calling Gemini API with model: ${model}...`);
     const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
